@@ -85,4 +85,10 @@ def get_flags(config_file=None):
     tf.app.flags.DEFINE_boolean('train_2d', False, """This will tell if it
                                 should be trained on 2D or 3D""")
     
+    # GAN Parameters
+    tf.app.flags.DEFINE_float('const_1', 5e-4,
+                              """Define Learning rate for KL Divergence""")
+    tf.app.flags.DEFINE_float('const_2', 1e-4,
+                              """Define Learning rate for reconstruction""")
+    
     return FLAGS

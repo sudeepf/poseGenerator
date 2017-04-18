@@ -19,7 +19,7 @@ import utils.add_summary
 import utils.train_utils
 import utils.eval_utils
 import utils.get_flags
-import models.hg_graph_builder
+import models.gan_builder
 
 # Read up and set up all the flag variables
 FLAG = utils.get_flags.get_flags()
@@ -36,7 +36,7 @@ def main(_):
     
     with tf.Graph().as_default():
         
-        builder = models.hg_graph_builder.HGgraphBuilder_MultiGPU(FLAG)
+        builder = models.gan_builder.HGgraphBuilder_MultiGPU(FLAG)
         
         # builder = models.hg_graph_builder.HGgraphBuilder(FLAG)
         print("build finished, There it stands, tall and strong...")
@@ -82,8 +82,8 @@ def main(_):
                       (ckpt.model_checkpoint_path, global_step))
             else:
                 print('No checkpoint file found')
-                # tf.global_variables_initializer().run()
-                saver.restore(sess, "./tensor_record//tmp/model64-64.ckpt")
+                tf.global_variables_initializer().run()
+                # saver.restore(sess, "./tensor_record//tmp/model64-64.ckpt")
                 print('model Initialized...')
             
             print("Let the Training Begin...")
@@ -109,56 +109,27 @@ def main(_):
                 
                 _x = []
                 vec_64 = []
-                vec_32 = []
-                vec_16 = []
-                vec_8 = []
-                gt = []
+                zt = []
                 time_ = time.clock()
                 for i in map(int, FLAG.gpu_string.split('-')):
                     fd = DataHolder.get_next_train_batch()
                     _x.append(fd[0])
                     vec_64.append(fd[1])
-                    vec_32.append(fd[2])
-                    vec_16.append(fd[3])
-                    vec_8.append(fd[4])
-                    #gt.append(fd[5])
+                    zt.append(
+                        np.random.uniform(-1.0,1.0,size=[FLAG.batch_size,
+                                                      256]).astype(
+                            np.float32))
                 
-                feed_dict_x = {i: d for i, d in zip(builder._x, _x)}
-                feed_dict_vec_64 = {i: d for i, d in
-                                   zip(builder.tensor_64, vec_64)}
-                feed_dict_vec_32 = {i: d for i, d in
-                                   zip(builder.tensor_32, vec_32)}
-                feed_dict_vec_16 = {i: d for i, d in
-                                   zip(builder.tensor_16, vec_16)}
-                feed_dict_vec_8 = {i: d for i, d in
-                                   zip(builder.tensor_8, vec_8)}
-                feed_dict_gt = {i: d for i, d in zip(builder.gt, gt)}
-                feed_dict_x.update(feed_dict_vec_64)
-                feed_dict_x.update(feed_dict_vec_32)
-                feed_dict_x.update(feed_dict_vec_16)
-                feed_dict_x.update(feed_dict_vec_8)
-                #feed_dict_x.update(feed_dict_gt)
                 
                 # print ("PreProcessing Time - incd reading", time.clock()-time_)
                 time_ = time.clock()
                 
                 if step % 10 == 1:
-                    summary, loss_, _ = sess.run([merged,
-                                                            builder.loss,
-                                                  builder.train_rmsprop],
-                                                 feed_dict_x)
-                    
-                    train_writer.add_summary(summary, step)
-                    
-                    continue
+                    pass
                 
-                run_metadata = tf.RunMetadata()
-                loss_, _, data_out = sess.run([builder.loss,
-                                            builder.train_rmsprop,builder.label],
-                                            feed_dict_x)
                 
-                # print("Time to feed and run the network", time.clock()-time_)
-                print("Grinding... Loss = " + str(loss_))
+                builder.train_GAN(_x, vec_64, zt, sess)
+                #print("Grinding... Loss = " + str(loss_))
                 
 
             train_writer.close()
